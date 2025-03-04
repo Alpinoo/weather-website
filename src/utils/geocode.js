@@ -1,23 +1,37 @@
-const request = require('postman-request');
+const request = require("postman-request");
+require("dotenv").config();
 
 const geocode = (address, callback) => {
+   if (!process.env.MAPBOX) {
+      return callback("Missing API Key: MAPBOX");
+   }
+
    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
       address
-   )}.json?access_token=pk.eyJ1IjoiYWxwaW5vOTciLCJhIjoiY2wyZG1mNDV0MTBpejNrcDltazNhdmQ4YyJ9.EtaiGDWIDq6VylqjbZ5Q-g&limit=1`;
-   request({url, json: true}, (error, {body}) => {
+   )}.json?access_token=${process.env.MAPBOX}&limit=1`;
+
+   request({ url, json: true }, (error, response) => {
       if (error) {
-         callback(
-            `Couldn't connect to the weather service`
-         );
-      } else if (body.features.length === 0) {
-         callback(`Couldn't find the location.`);
-      } else {
-         callback(undefined, {
-            latitude: body.features[0].center[1],
-            longitude: body.features[0].center[0],
-            location: body.features[0].place_name,
-         });
+         return callback("Couldn't connect to the location service.", undefined);
       }
+
+      if (!response || !response.body || !response.body.features) {
+         return callback("Invalid API response from Mapbox.", undefined);
+      }
+
+      const { body } = response;
+
+      if (body.features.length === 0) {
+         return callback("Couldn't find the location.", undefined);
+      }
+
+      const { center, place_name } = body.features[0];
+
+      callback(undefined, {
+         latitude: center[1],
+         longitude: center[0],
+         location: place_name,
+      });
    });
 };
 
